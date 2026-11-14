@@ -1,0 +1,105 @@
+{
+  "projects": [
+    {
+      "id": "claude-dashboard",
+      "createdAt": "2026-10-31T22:41:37.957Z",
+      "name": "Claude Dashboard",
+      "status": "aktif",
+      "summary": "Pusat komando + ingatan agent Claude, jalan di pm2 (claude-dashboard) port 2200. Peta 2D bisa diketuk, tab Proyek/Ingatan/Handoff. Data di data/memory.json, handoff otomatis di data/HANDOFF.md.",
+      "path": "/home/agentuser/claude-dashboard",
+      "port": "2200",
+      "updatedAt": "2026-10-31T22:41:38.669Z"
+    },
+    {
+      "id": "mcp-juliansyah",
+      "createdAt": "2026-10-31T22:41:38.025Z",
+      "name": "Akses MCP ke VM",
+      "status": "aktif",
+      "summary": "MCP bernama juliansyah (tool execute_command) memberi agent akses shell ke VM Ubuntu ini. Jalurnya: pm2 mcp-server (port 8181) + mcp-ngrok (ngrok http 8181, panel lokal 4040). JANGAN dihentikan, kalau mati agent kehilangan akses.",
+      "port": "8181",
+      "updatedAt": "2026-10-31T22:41:38.025Z"
+    },
+    {
+      "id": "vm-server",
+      "createdAt": "2026-10-31T22:41:38.094Z",
+      "name": "Kondisi & keamanan VM",
+      "status": "aktif",
+      "summary": "VM Ubuntu: 2 core, 7.4 GB RAM, disk 50 GB. Dibersihkan agar hanya port penting yang terbuka.",
+      "path": "/home/agentuser",
+      "updatedAt": "2026-10-31T22:41:38.737Z"
+    }
+  ],
+  "notes": [
+    {
+      "id": "8c3a2bd6",
+      "type": "keputusan",
+      "projectId": "vm-server",
+      "text": "pm2 dibersihkan: hanya mcp-ngrok dan mcp-server yang dipertahankan. 13 proses lain dihapus dari pm2 (kode proyek masih ada di disk). Daftar proses lama dicadangkan di /tmp/pm2-backup-20261101-0528.json (hanya catatan konfigurasi, bukan restore langsung). pm2 save belum dijalankan.",
+      "by": "claude",
+      "ts": "2026-10-31T22:41:38.172Z"
+    },
+    {
+      "id": "6e7f9110",
+      "type": "keputusan",
+      "projectId": "vm-server",
+      "text": "VNC dan noVNC dimatikan lalu dinonaktifkan di systemd: vela-novnc, vela-x11vnc, vela-desktop-input, vela-desktop-observer. vela-xvfb dan vela-desktop-wm masih jalan (layar virtual, tanpa port jaringan).",
+      "by": "claude",
+      "ts": "2026-10-31T22:41:38.239Z"
+    },
+    {
+      "id": "12175c8c",
+      "type": "keputusan",
+      "projectId": "vm-server",
+      "text": "Port aplikasi dimatikan: 2101, 2102, 2110 (node server.mjs), 8899 (python http.server), 9119 (hermes serve). hermes-gateway (layanan user) masih jalan tanpa port. Port sistem dibiarkan: 22 SSH, 53 DNS, 631 CUPS, Tailscale, 49983 (envd bawaan platform).",
+      "by": "claude",
+      "ts": "2026-10-31T22:41:38.318Z"
+    },
+    {
+      "id": "f63c22e7",
+      "type": "info",
+      "projectId": "vm-server",
+      "text": "Hati-hati: pkill -f dengan pola yang juga muncul di baris perintah sendiri akan membunuh shell yang menjalankannya. Matikan proses lewat PID.",
+      "by": "claude",
+      "ts": "2026-10-31T22:41:38.389Z"
+    },
+    {
+      "id": "ac21b24c",
+      "type": "sesi",
+      "projectId": "claude-dashboard",
+      "text": "Dashboard dibuat dan jalan di port 2200. Akses butuh kunci di data/token.txt. Belum pm2 save, jadi belum otomatis hidup lagi setelah reboot. Langkah berikut: tes tampilan di HP, tentukan nasib hermes-gateway dan layar virtual vela, isi proyek-proyek lain lewat tab Proyek (Impor dari folder home).",
+      "by": "claude",
+      "ts": "2026-10-31T22:41:38.458Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "584a4e33",
+      "projectId": "claude-dashboard",
+      "text": "Jalankan pm2 save supaya dashboard bertahan setelah reboot (tunggu persetujuan pengguna)",
+      "done": false,
+      "ts": "2026-10-31T22:41:38.530Z"
+    },
+    {
+      "id": "defecb3c",
+      "projectId": "claude-dashboard",
+      "text": "Tes peta 2D di HP, rapikan tampilan kalau ada yang tidak pas",
+      "done": false,
+      "ts": "2026-10-31T22:41:38.599Z"
+    },
+    {
+      "id": "56cf2feb",
+      "projectId": "claude-dashboard",
+      "text": "Impor proyek-proyek lain dari folder home lewat tab Proyek dan isi ringkasannya",
+      "done": false,
+      "ts": "2026-10-31T22:41:38.669Z"
+    },
+    {
+      "id": "3c0bb8aa",
+      "projectId": "vm-server",
+      "text": "Putuskan nasib hermes-gateway dan layar virtual vela-xvfb/vela-desktop-wm (masih jalan, tanpa port)",
+      "done": false,
+      "ts": "2026-10-31T22:41:38.737Z"
+    }
+  ],
+  "updatedAt": "2026-10-31T22:41:38.737Z"
+}

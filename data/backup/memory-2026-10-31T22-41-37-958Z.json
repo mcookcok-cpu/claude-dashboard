@@ -1,0 +1,17 @@
+{
+  "projects": [
+    {
+      "id": "claude-dashboard",
+      "createdAt": "2026-10-31T22:41:37.957Z",
+      "name": "Claude Dashboard",
+      "status": "aktif",
+      "summary": "Pusat komando + ingatan agent Claude, jalan di pm2 (claude-dashboard) port 2200. Peta 2D bisa diketuk, tab Proyek/Ingatan/Handoff. Data di data/memory.json, handoff otomatis di data/HANDOFF.md.",
+      "path": "/home/agentuser/claude-dashboard",
+      "port": "2200",
+      "updatedAt": "2026-10-31T22:41:37.957Z"
+    }
+  ],
+  "notes": [],
+  "tasks": [],
+  "updatedAt": "2026-10-31T22:41:37.958Z"
+}

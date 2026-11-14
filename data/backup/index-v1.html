@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<title>Pusat Komando Claude</title>
+<style>
+:root{--bg:#0b1020;--card:#141b34;--card2:#1b2447;--line:#27325f;--tx:#e8ecff;--mut:#8b96c9;--ac:#7aa2ff;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--cl:#d97757}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:10px 12px 8px;position:sticky;top:0;background:var(--bg);z-index:5;border-bottom:1px solid var(--line)}
+h1{font-size:16px;margin:0 0 6px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:12px;color:var(--mut)}
+.chip b{color:var(--tx)}
+nav{display:flex;gap:6px;margin-top:8px}
+nav button{flex:1;background:var(--card);color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:8px 2px;font-size:13px}
+nav button.on{background:var(--ac);color:#08102a;border-color:var(--ac);font-weight:600}
+main{padding:8px 12px 28px}
+section{display:none}section.on{display:block}
+#mapwrap{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#0b1020}
+canvas{display:block;width:100%;touch-action:pan-y}
+#tip{position:absolute;display:none;width:236px;background:rgba(18,25,52,.98);border:1px solid var(--ac);border-radius:12px;padding:9px 11px;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.55);z-index:3}
+#tip h4{margin:0 20px 4px 0;font-size:13.5px}
+#tip .x{position:absolute;top:2px;right:8px;color:var(--mut);font-size:20px;line-height:1.2;cursor:pointer}
+#tip p{margin:2px 0;color:#cdd5ff;word-break:break-word}
+#tip .k{color:var(--mut)}
+.hint{color:var(--mut);font-size:12px;margin:6px 2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin:8px 0}
+.card h3{margin:0 0 4px;font-size:15px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.mut{color:var(--mut)}.sm{font-size:12px}
+input,select,textarea{width:100%;background:var(--card2);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;margin:3px 0}
+textarea{min-height:64px;resize:vertical}
+button.b{background:var(--card2);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font:inherit}
+button.pri{background:var(--ac);color:#08102a;border-color:var(--ac);font-weight:600}
+button.del{color:var(--bad)}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1}.row>button{flex:0 0 auto}
+.tag{display:inline-block;border-radius:6px;padding:0 7px;font-size:11.5px;border:1px solid}
+.task{display:flex;gap:8px;align-items:flex-start;padding:4px 0;border-top:1px solid var(--line)}
+.task input{width:auto;margin:3px 0 0}
+.task span{flex:1;word-break:break-word}.task.d span{color:var(--mut);text-decoration:line-through}
+.task button{background:none;border:0;color:var(--mut);font-size:16px;padding:0 4px}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:12px;max-height:60vh;overflow:auto}
+#login{position:fixed;inset:0;background:rgba(5,8,20,.96);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
+#login .card{width:100%;max-width:340px}
+</style></head><body>
+<div id="login"><div class="card"><h3>🔑 Kunci akses</h3><p class="mut sm">Tempel kunci dari <code>data/token.txt</code> di server.</p><input id="keyin" type="password" placeholder="kunci" autocomplete="off"><button class="b pri" id="keyok" style="width:100%;margin-top:6px">Masuk</button></div></div>
+<header>
+  <h1>🧠 Pusat Komando Claude</h1>
+  <div class="chips" id="chips"></div>
+  <nav id="nav">
+    <button data-tab="map" class="on">🗺️ Peta</button>
+    <button data-tab="proj">📁 Proyek</button>
+    <button data-tab="mem">🧠 Ingatan</button>
+    <button data-tab="hand">🔁 Handoff</button>
+  </nav>
+</header>
+<main>
+  <section id="tab-map" class="on">
+    <div id="mapwrap"><canvas id="cv"></canvas><div id="tip"></div></div>
+    <div class="hint">Ketuk benda atau karakter Claude di peta untuk melihat keterangannya.</div>
+  </section>
+
+  <section id="tab-proj">
+    <div class="card">
+      <h3>Proyek <button class="b pri" id="newproj">+ Proyek</button></h3>
+      <div id="projform" style="display:none">
+        <input type="hidden" id="pf-id">
+        <input id="pf-name" placeholder="Nama proyek">
+        <textarea id="pf-sum" placeholder="Ringkasan: apa ini, sudah sampai mana"></textarea>
+        <div class="row"><input id="pf-path" placeholder="Folder (mis. /home/agentuser/app)"><input id="pf-port" placeholder="Port" style="max-width:90px"></div>
+        <select id="pf-status"><option>aktif</option><option>jeda</option><option>selesai</option><option>masalah</option></select>
+        <div class="row"><button class="b pri" id="pf-save">Simpan</button><button class="b" id="pf-cancel">Batal</button></div>
+      </div>
+      <div class="row" style="margin-top:6px"><button class="b" id="disc">📂 Impor dari folder home</button></div>
+      <div id="disclist"></div>
+    </div>
+    <div id="projlist"></div>
+  </section>
+
+  <section id="tab-mem">
+    <div class="card">
+      <h3>Tambah catatan</h3>
+      <div class="row"><select id="nf-type"><option>catatan</option><option>keputusan</option><option>masalah</option><option>selesai</option><option>info</option><option>sesi</option></select><select id="nf-proj"></select></div>
+      <textarea id="nf-text" placeholder="Apa yang perlu diingat agent berikutnya?"></textarea>
+      <button class="b pri" id="nf-save" style="width:100%">Simpan ke ingatan</button>
+    </div>
+    <select id="nf-filter"></select>
+    <div id="memlist"></div>
+  </section>
+
+  <section id="tab-hand">
+    <div class="card">
+      <h3>Handoff untuk agent baru</h3>
+      <p class="mut sm" id="hand-info"></p>
+      <div class="row"><button class="b pri" id="copyprompt">📋 Salin prompt agent baru</button><button class="b" id="copyhand">Salin handoff</button></div>
+    </div>
+    <pre id="handtxt">memuat…</pre>
+  </section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let KEY=localStorage.getItem('cmkey')||'';
+const qk=new URLSearchParams(location.search).get('key');
+if(qk){KEY=qk;localStorage.setItem('cmkey',qk);history.replaceState(null,'',location.pathname);}
+let S={mem:{projects:[],notes:[],tasks:[]},sys:null,pm2:[],meta:{}};
+let curTab='map',lastMemStr='';
+
+function needKey(){$('#login').style.display='flex';$('#keyin').focus();}
+$('#keyok').onclick=()=>{const v=$('#keyin').value.trim();if(!v)return;KEY=v;localStorage.setItem('cmkey',v);$('#login').style.display='none';refresh(true);};
+async function api(p,opt={}){
+  const r=await fetch('/api'+p,{method:opt.method||'GET',headers:{'content-type':'application/json','x-key':KEY},body:opt.body?JSON.stringify(opt.body):undefined});
+  if(r.status===401){needKey();throw new Error('kunci salah');}
+  const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j;
+}
+const GB=1073741824,MB=1048576;
+const fb=n=>n>=GB?(n/GB).toFixed(1)+' GB':Math.round(n/MB)+' MB';
+function ago(ts){if(!ts)return '-';const m=Math.round((Date.now()-new Date(ts))/60000);if(m<1)return 'baru saja';if(m<60)return m+' mnt lalu';const h=Math.round(m/60);if(h<48)return h+' jam lalu';return Math.round(h/24)+' hari lalu';}
+function dur(ms){const m=Math.floor(ms/60000);if(m<60)return m+' mnt';const h=Math.floor(m/60);if(h<48)return h+' jam';return Math.floor(h/24)+' hari';}
+const SC={aktif:'#4ade80',jeda:'#fbbf24',selesai:'#7aa2ff',masalah:'#f87171'};
+const NT={keputusan:['📌','#7aa2ff'],catatan:['📝','#a78bfa'],masalah:['⚠️','#f87171'],selesai:['✅','#4ade80'],info:['ℹ️','#38bdf8'],sesi:['🔁','#fbbf24']};
+const tag=(t,c)=>`<span class="tag" style="color:${c};border-color:${c}">${esc(t)}</span>`;
+const pctColor=p=>p<60?'#4ade80':p<85?'#fbbf24':'#f87171';
+
+function renderHeader(){
+  const y=S.sys;if(!y)return;
+  const on=S.pm2.filter(p=>p.status==='online').length;
+  $('#chips').innerHTML=`<span class="chip">CPU <b>${y.cpu.toFixed(0)}%</b></span><span class="chip">RAM <b>${Math.round(y.ram.used/y.ram.total*100)}%</b></span><span class="chip">Disk <b>${y.disk?y.disk.pct:'-'}%</b></span><span class="chip">pm2 <b>${on}/${S.pm2.length}</b></span>`;
+}
+
+/* ===== PETA 2D ===== */
+const cv=$('#cv'),ctx=cv.getContext('2d'),tip=$('#tip'),wrap=$('#mapwrap');
+let items=[],rooms=[],W=320,H=300,sel=null,tipTimer=null;
+const av={x:60,y:60,tx:60,ty:60,wait:1,dir:1};
+
+function pick(){
+  if(!items.length){av.tx=W/2;av.ty=H/2;return;}
+  const it=items[Math.floor(Math.random()*items.length)];
+  av.tx=Math.min(W-18,Math.max(18,it.cx+(Math.random()<.5?-1:1)*(it.w/2+8)));
+  av.ty=it.cy+4;
+}
+function layout(){
+  W=Math.max(300,wrap.clientWidth||300);
+  const pad=10,inner=W-pad*2,cols=Math.max(3,Math.floor((inner-16)/84)),cw=(inner-16)/cols;
+  items=[];rooms=[];let y=pad;
+  const place=(i,top,rh)=>({cx:pad+8+cw*(i%cols)+cw/2,cy:top+Math.floor(i/cols)*rh+rh/2});
+  const pm=S.pm2||[];
+  let h=32+84+Math.max(1,Math.ceil(pm.length/cols))*68+8;
+  rooms.push({title:'🖥️ RUANG SERVER',x:pad,y,w:inner,h,c:'#38bdf8'});
+  ['cpu','ram','disk'].forEach((k,i)=>{items.push({key:'g-'+k,type:'gauge',k,w:70,h:76,...place(i,y+32,84)});});
+  const top2=y+32+84;
+  pm.forEach((p,i)=>{items.push({key:'p-'+p.name,type:'proc',d:p,w:66,h:56,...place(i,top2,68)});});
+  y+=h+10;
+  const P=S.mem.projects;
+  h=32+Math.max(1,Math.ceil(P.length/cols))*96+8;
+  rooms.push({title:'🏠 RUANG PROYEK',x:pad,y,w:inner,h,c:'#4ade80',empty:P.length?'':'Belum ada proyek. Tambah lewat tab Proyek.'});
+  P.forEach((p,i)=>{items.push({key:'j-'+p.id,type:'proj',d:p,w:70,h:84,...place(i,y+32,96)});});
+  y+=h+10;
+  const N=[...S.mem.notes].reverse().slice(0,12);
+  h=32+Math.max(1,Math.ceil(N.length/cols))*58+8;
+  rooms.push({title:'🧠 RUANG INGATAN',x:pad,y,w:inner,h,c:'#a78bfa',empty:N.length?'':'Belum ada catatan. Tambah lewat tab Ingatan.'});
+  N.forEach((n,i)=>{items.push({key:'n-'+n.id,type:'note',d:n,w:44,h:44,...place(i,y+32,58)});});
+  y+=h+pad;H=y;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  if(av.x>W||av.y>H||av.x<0||av.y<0){av.x=W/2;av.y=rooms[1]?rooms[1].y+20:40;}
+  pick();
+}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function label(t,x,y,c='#8b96c9',sz=10.5){ctx.fillStyle=c;ctx.font=sz+'px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(t.length>11?t.slice(0,10)+'…':t,x,y);}
+function drawRoom(r){
+  ctx.save();rr(r.x,r.y,r.w,r.h,14);ctx.fillStyle=r.c+'14';ctx.fill();ctx.strokeStyle=r.c+'66';ctx.lineWidth=1.2;ctx.stroke();ctx.clip();
+  ctx.strokeStyle='rgba(255,255,255,.035)';ctx.lineWidth=1;
+  for(let gx=r.x+22;gx<r.x+r.w;gx+=22){ctx.beginPath();ctx.moveTo(gx,r.y);ctx.lineTo(gx,r.y+r.h);ctx.stroke();}
+  for(let gy=r.y+22;gy<r.y+r.h;gy+=22){ctx.beginPath();ctx.moveTo(r.x,gy);ctx.lineTo(r.x+r.w,gy);ctx.stroke();}
+  ctx.restore();
+  ctx.fillStyle=r.c;ctx.font='bold 12px system-ui,sans-serif';ctx.textAlign='left';ctx.fillText(r.title,r.x+12,r.y+21);
+  if(r.empty){ctx.fillStyle='#8b96c9';ctx.font='12px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(r.empty,r.x+r.w/2,r.y+r.h/2+10);}
+}
+function drawItem(it,t){
+  if(sel&&sel.key===it.key){ctx.save();ctx.strokeStyle='#7aa2ff';ctx.lineWidth=2;ctx.setLineDash([5,4]);rr(it.cx-it.w/2-3,it.cy-it.h/2-3,it.w+6,it.h+6,12);ctx.stroke();ctx.restore();}
+  if(it.type==='gauge'){
+    const y=S.sys;let pct=0,txt='…';
+    if(y){if(it.k==='cpu')pct=y.cpu;else if(it.k==='ram')pct=y.ram.used/y.ram.total*100;else pct=y.disk?y.disk.pct:0;txt=Math.round(pct)+'%';}
+    const cx=it.cx,cy=it.cy-8,r=24;ctx.lineCap='round';ctx.lineWidth=6;
+    ctx.strokeStyle='#27325f';ctx.beginPath();ctx.arc(cx,cy,r,.75*Math.PI,2.25*Math.PI);ctx.stroke();
+    if(pct>0){ctx.strokeStyle=pctColor(pct);ctx.beginPath();ctx.arc(cx,cy,r,.75*Math.PI,.75*Math.PI+1.5*Math.PI*Math.min(pct,100)/100);ctx.stroke();}
+    ctx.fillStyle='#e8ecff';ctx.font='bold 12px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(txt,cx,cy+4);
+    label(it.k.toUpperCase(),cx,it.cy+32);
+  }else if(it.type==='proc'){
+    const on=it.d.status==='online',c=on?'#4ade80':'#f87171',x=it.cx-30,y=it.cy-24;
+    rr(x,y,60,38,7);ctx.fillStyle='#1b2447';ctx.fill();ctx.strokeStyle=c+'aa';ctx.lineWidth=1.3;ctx.stroke();
+    ctx.fillStyle='#27325f';ctx.fillRect(x+8,y+12,30,3);ctx.fillRect(x+8,y+20,30,3);
+    ctx.fillStyle=c;ctx.globalAlpha=on?.55+.45*Math.sin(t/350):1;ctx.beginPath();ctx.arc(x+50,y+10,3.5,0,7);ctx.fill();ctx.globalAlpha=1;
+    label(it.d.name,it.cx,it.cy+28);
+  }else if(it.type==='proj'){
+    const c=SC[it.d.status]||'#7aa2ff',cx=it.cx,cy=it.cy-6;
+    ctx.fillStyle=c+'33';ctx.fillRect(cx-20,cy-4,40,30);ctx.strokeStyle=c;ctx.lineWidth=1.5;ctx.strokeRect(cx-20,cy-4,40,30);
+    ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(cx-26,cy-4);ctx.lineTo(cx,cy-26);ctx.lineTo(cx+26,cy-4);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#0b1020';ctx.fillRect(cx-5,cy+10,10,16);
+    const open=S.mem.tasks.filter(x=>x.projectId===it.d.id&&!x.done).length;
+    if(open){ctx.fillStyle='#d97757';ctx.beginPath();ctx.arc(cx+22,cy-20,8,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 10px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(open,cx+22,cy-16.5);}
+    label(it.d.name,it.cx,it.cy+38,'#e8ecff');
+  }else if(it.type==='note'){
+    const [em,c]=NT[it.d.type]||NT.catatan;
+    rr(it.cx-18,it.cy-18,36,36,9);ctx.fillStyle=c+'33';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1.3;ctx.stroke();
+    ctx.font='17px system-ui,sans-serif';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText(em,it.cx,it.cy+6);
+  }
+}
+function drawAvatar(t){
+  const bob=Math.sin(t/180)*2,x=av.x,y=av.y+bob;
+  if(sel&&sel.key==='avatar'){ctx.save();ctx.strokeStyle='#7aa2ff';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(x,y,21,0,7);ctx.stroke();ctx.restore();}
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(x,av.y+17,11,4,0,0,7);ctx.fill();
+  ctx.fillStyle='#d97757';ctx.beginPath();ctx.arc(x,y,15,0,7);ctx.fill();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x-5,y-3,2.8,0,7);ctx.fill();ctx.beginPath();ctx.arc(x+5,y-3,2.8,0,7);ctx.fill();
+  ctx.fillStyle='#2b1a14';ctx.beginPath();ctx.arc(x-5+av.dir,y-3,1.3,0,7);ctx.fill();ctx.beginPath();ctx.arc(x+5+av.dir,y-3,1.3,0,7);ctx.fill();
+  ctx.strokeStyle='#2b1a14';ctx.lineWidth=1.5;ctx.lineCap='round';ctx.beginPath();ctx.arc(x,y+1,6,.15*Math.PI,.85*Math.PI);ctx.stroke();
+  label('Claude',x,av.y+31,'#f0b8a4',10);
+}
+let last=0;
+function step(t){
+  const dt=Math.min(.05,Math.max(0,(t-last)/1000));last=t;
+  if(av.wait>0){av.wait-=dt;return;}
+  const dx=av.tx-av.x,dy=av.ty-av.y,d=Math.hypot(dx,dy);
+  if(d<2){av.wait=1.2+Math.random()*1.8;pick();return;}
+  const v=Math.min(55*dt,d);av.x+=dx/d*v;av.y+=dy/d*v;av.dir=dx>=0?1:-1;
+}
+function frame(t){
+  if(curTab==='map'){
+    step(t);ctx.clearRect(0,0,W,H);ctx.fillStyle='#0b1020';ctx.fillRect(0,0,W,H);
+    rooms.forEach(drawRoom);items.forEach(it=>drawItem(it,t));drawAvatar(t);
+  }
+  requestAnimationFrame(frame);
+}
+function tipHTML(it){
+  const y=S.sys;
+  if(it.key==='avatar'){const m=S.mem,open=m.tasks.filter(t=>!t.done).length;return `<h4>🤖 Claude — penjaga ingatan</h4><p>${m.projects.length} proyek · ${open} tugas terbuka · ${m.notes.length} catatan</p><p class="k">Ingatan terakhir diperbarui ${ago(m.updatedAt)}</p><p>Kalau Claude kena limit, agent baru cukup membuka tab <b>Handoff</b>.</p>`;}
+  if(it.type==='gauge'){
+    if(!y)return '<h4>Memuat…</h4>';
+    if(it.k==='cpu')return `<h4>⚙️ CPU</h4><p>Terpakai <b>${y.cpu.toFixed(1)}%</b> dari ${y.cores} core</p><p class="k">Load 1/5/15 mnt: ${y.load.join(' / ')}</p><p class="k">Uptime server: ${dur(y.uptime*1000)}</p>`;
+    if(it.k==='ram')return `<h4>🧮 RAM</h4><p>Terpakai <b>${fb(y.ram.used)}</b> dari ${fb(y.ram.total)}</p><p class="k">Tersedia efektif: ${fb(y.ram.avail)}</p><p class="k">Swap: ${fb(y.swap.used)} dari ${fb(y.swap.total)}</p>`;
+    const d=y.disk;if(!d)return '<h4>💾 Disk</h4><p>Data belum tersedia</p>';
+    return `<h4>💾 Disk (/)</h4><p>Terpakai <b>${fb(d.used)}</b> dari ${fb(d.size)} (${d.pct}%)</p><p class="k">Sisa: ${fb(d.avail)}</p>`;
+  }
+  if(it.type==='proc'){const p=it.d,c=p.status==='online'?'#4ade80':'#f87171';return `<h4>📦 ${esc(p.name)}</h4><p>${tag(p.status||'?',c)} pm2 id ${p.id}</p><p class="k">Aktif ${dur(p.uptime||0)} · restart ${p.restarts??0}</p><p class="k">RAM ${fb(p.mem||0)} · CPU ${p.cpu??0}% · PID ${p.pid||'-'}</p>`;}
+  if(it.type==='proj'){
+    const p=it.d,ts=S.mem.tasks.filter(t=>t.projectId===p.id),open=ts.filter(t=>!t.done);
+    return `<h4>🏠 ${esc(p.name)}</h4><p>${tag(p.status||'aktif',SC[p.status]||'#7aa2ff')}${p.port?' port '+esc(p.port):''}</p>${p.summary?`<p>${esc(p.summary)}</p>`:''}${p.path?`<p class="k">${esc(p.path)}</p>`:''}<p class="k">Tugas: ${open.length} terbuka, ${ts.length-open.length} selesai</p>${open.slice(0,3).map(t=>`<p>▫️ ${esc(t.text)}</p>`).join('')}<p class="k">Diperbarui ${ago(p.updatedAt)}</p>`;
+  }
+  if(it.type==='note'){const n=it.d,pj=S.mem.projects.find(p=>p.id===n.projectId),em=(NT[n.type]||NT.catatan)[0];return `<h4>${em} ${esc(n.type)}</h4><p>${esc(n.text)}</p><p class="k">${esc(n.by)} · ${ago(n.ts)}${pj?' · '+esc(pj.name):''}</p>`;}
+  return '';
+}
+function hideTip(){tip.style.display='none';sel=null;}
+function showTip(hit,x,y){
+  sel=hit;tip.innerHTML=tipHTML(hit)+'<span class="x">×</span>';tip.style.display='block';
+  tip.querySelector('.x').onclick=e=>{e.stopPropagation();hideTip();};
+  const tw=tip.offsetWidth,th=tip.offsetHeight;
+  const left=Math.min(Math.max(6,x-tw/2),Math.max(6,W-tw-6));
+  let top=y+26;if(top+th>H-4)top=y-th-26;if(top<4)top=4;
+  tip.style.left=left+'px';tip.style.top=top+'px';
+  clearTimeout(tipTimer);tipTimer=setTimeout(hideTip,12000);
+}
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*(W/r.width),y=(e.clientY-r.top)*(H/r.height);
+  let hit=null;
+  if(Math.hypot(x-av.x,y-av.y)<=22)hit={key:'avatar',type:'avatar'};
+  else for(let i=items.length-1;i>=0;i--){const it=items[i];if(Math.abs(x-it.cx)<=it.w/2+4&&Math.abs(y-it.cy)<=it.h/2+4){hit=it;break;}}
+  if(!hit){hideTip();return;}
+  showTip(hit,x,y);
+});
+
+/* ===== TAB ===== */
+function setTab(t){
+  curTab=t;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t));
+  if(t==='map')layout();
+  if(t==='hand')loadHand();
+}
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.tab);};
+
+/* ===== PROYEK ===== */
+function renderProj(force){
+  const act=document.activeElement;
+  if(!force&&act&&act.closest&&act.closest('#projlist'))return;
+  const P=S.mem.projects,T=S.mem.tasks;
+  $('#projlist').innerHTML=P.length?P.map(p=>{
+    const ts=T.filter(t=>t.projectId===p.id);
+    return `<div class="card" data-id="${esc(p.id)}">
+      <h3><span>${esc(p.name)}</span>${tag(p.status||'aktif',SC[p.status]||'#7aa2ff')}</h3>
+      ${p.summary?`<div>${esc(p.summary)}</div>`:''}
+      <div class="mut sm">${p.path?esc(p.path)+' · ':''}${p.port?'port '+esc(p.port)+' · ':''}diperbarui ${ago(p.updatedAt)} · id <code>${esc(p.id)}</code></div>
+      <div style="margin-top:6px">${ts.map(t=>`<div class="task ${t.done?'d':''}"><input type="checkbox" data-act="tg" data-tid="${t.id}" ${t.done?'checked':''}><span>${esc(t.text)}</span><button data-act="dt" data-tid="${t.id}">×</button></div>`).join('')}</div>
+      <div class="row" style="margin-top:6px"><input placeholder="Tugas baru…" data-in="task"><button class="b" data-act="at">+</button></div>
+      <div class="row" style="margin-top:6px"><select data-act="st">${['aktif','jeda','selesai','masalah'].map(s=>`<option ${s===(p.status||'aktif')?'selected':''}>${s}</option>`).join('')}</select><button class="b" data-act="ep">Ubah</button><button class="b del" data-act="dp">Hapus</button></div>
+    </div>`;}).join(''):'<div class="card mut">Belum ada proyek.</div>';
+}
+$('#projlist').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]');if(!b||b.tagName==='SELECT')return;
+  const card=b.closest('.card'),id=card.dataset.id,p=S.mem.projects.find(x=>x.id===id),act=b.dataset.act;
+  try{
+    if(act==='tg')await api('/task/'+b.dataset.tid+'/toggle',{method:'POST'});
+    else if(act==='dt')await api('/task/'+b.dataset.tid,{method:'DELETE'});
+    else if(act==='at'){const inp=card.querySelector('[data-in=task]'),v=inp.value.trim();if(!v)return;await api('/task',{method:'POST',body:{projectId:id,text:v}});inp.value='';}
+    else if(act==='dp'){if(!confirm('Hapus proyek "'+p.name+'" beserta tugasnya?'))return;await api('/project/'+id,{method:'DELETE'});}
+    else if(act==='ep'){openForm(p);return;}
+    await refresh(true);
+  }catch(err){alert(err.message);}
+});
+$('#projlist').addEventListener('change',async e=>{
+  const b=e.target;if(b.dataset.act!=='st')return;
+  const p=S.mem.projects.find(x=>x.id===b.closest('.card').dataset.id);
+  try{await api('/project',{method:'POST',body:{id:p.id,name:p.name,status:b.value}});await refresh(true);}catch(err){alert(err.message);}
+});
+$('#projlist').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset.in==='task')e.target.closest('.row').querySelector('[data-act=at]').click();});
+function openForm(p){
+  $('#projform').style.display='block';
+  $('#pf-id').value=p?p.id:'';$('#pf-name').value=p?p.name:'';$('#pf-sum').value=p?p.summary||'':'';
+  $('#pf-path').value=p?p.path||'':'';$('#pf-port').value=p?p.port||'':'';$('#pf-status').value=p?p.status||'aktif':'aktif';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+$('#newproj').onclick=()=>openForm(null);
+$('#pf-cancel').onclick=()=>{$('#projform').style.display='none';};
+$('#pf-save').onclick=async()=>{
+  try{await api('/project',{method:'POST',body:{id:$('#pf-id').value||undefined,name:$('#pf-name').value,summary:$('#pf-sum').value,path:$('#pf-path').value,port:$('#pf-port').value,status:$('#pf-status').value}});
+  $('#projform').style.display='none';await refresh(true);}catch(e){alert(e.message);}
+};
+$('#disc').onclick=async()=>{
+  try{
+    const d=await api('/discover'),have=new Set(S.mem.projects.map(p=>p.path)),list=d.filter(x=>!have.has(x.path));
+    $('#disclist').innerHTML=list.length?list.map(x=>`<div class="row" style="margin-top:4px;flex-wrap:nowrap"><div><b>${esc(x.name)}</b><div class="mut sm">${esc(x.marks.join(', '))}</div></div><button class="b" data-name="${esc(x.name)}" data-path="${esc(x.path)}">Tambah</button></div>`).join(''):'<p class="mut sm">Tidak ada folder baru.</p>';
+  }catch(e){alert(e.message);}
+};
+$('#disclist').addEventListener('click',async e=>{
+  const b=e.target.closest('button[data-path]');if(!b)return;
+  try{await api('/project',{method:'POST',body:{name:b.dataset.name,path:b.dataset.path,summary:'(diimpor dari folder, ringkasan belum diisi)'}});b.textContent='✓';b.disabled=true;await refresh(true);}catch(err){alert(err.message);}
+});
+
+/* ===== INGATAN ===== */
+function renderMem(){
+  const P=S.mem.projects;
+  const opts='<option value="">(tanpa proyek)</option>'+P.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+  const nfp=$('#nf-proj');if(nfp.dataset.sig!==opts){const v=nfp.value;nfp.innerHTML=opts;nfp.value=v;nfp.dataset.sig=opts;}
+  const flt=$('#nf-filter'),fopts='<option value="*">Semua catatan</option>'+opts.replace('(tanpa proyek)','Tanpa proyek');
+  if(flt.dataset.sig!==fopts){const v=flt.value||'*';flt.innerHTML=fopts;flt.value=v;flt.dataset.sig=fopts;}
+  const f=flt.value;let N=[...S.mem.notes].reverse();
+  if(f!=='*')N=N.filter(n=>(n.projectId||'')===f);
+  $('#memlist').innerHTML=N.length?N.slice(0,100).map(n=>{
+    const [em,c]=NT[n.type]||NT.catatan,pj=P.find(p=>p.id===n.projectId);
+    return `<div class="card"><div class="row" style="flex-wrap:nowrap"><div>${em} ${tag(n.type,c)} <span class="mut sm">${esc(n.by)} · ${ago(n.ts)}${pj?' · '+esc(pj.name):''}</span></div><button class="b del" data-nid="${n.id}" style="padding:2px 9px">×</button></div><div style="margin-top:4px;white-space:pre-wrap;word-break:break-word">${esc(n.text)}</div></div>`;
+  }).join(''):'<div class="card mut">Belum ada catatan.</div>';
+}
+$('#nf-filter').onchange=renderMem;
+$('#nf-save').onclick=async()=>{
+  const text=$('#nf-text').value.trim();if(!text)return;
+  try{await api('/note',{method:'POST',body:{type:$('#nf-type').value,projectId:$('#nf-proj').value||null,text,by:'pengguna'}});$('#nf-text').value='';await refresh(true);}catch(e){alert(e.message);}
+};
+$('#memlist').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-nid]');if(!b)return;
+  if(!confirm('Hapus catatan ini?'))return;
+  try{await api('/note/'+b.dataset.nid,{method:'DELETE'});await refresh(true);}catch(err){alert(err.message);}
+});
+
+/* ===== HANDOFF ===== */
+let handText='';
+async function loadHand(){
+  try{
+    const r=await fetch('/handoff.md',{headers:{'x-key':KEY}});
+    if(!r.ok)throw new Error(r.status);
+    handText=await r.text();$('#handtxt').textContent=handText;
+    $('#hand-info').innerHTML='File di server: <code>'+esc((S.meta.dir||'')+'/data/HANDOFF.md')+'</code>, diperbarui otomatis setiap ada perubahan.';
+  }catch(e){$('#handtxt').textContent='gagal memuat handoff';}
+}
+function agentPrompt(){
+  const d=S.meta.dir||'~/claude-dashboard';
+  return 'Kamu melanjutkan pekerjaan agent Claude sebelumnya di server ini. Baca ingatan dulu: jalankan `cat '+d+'/data/HANDOFF.md` (atau buka '+location.origin+'/handoff.md?key='+KEY+'). Lanjutkan tugas yang masih terbuka. Setiap selesai langkah penting, catat dengan `node '+d+'/cm.mjs note "teks" --proyek <id>`. Sebelum berhenti atau kena limit, tulis catatan `--tipe sesi` berisi progres dan langkah berikutnya. Jangan hentikan pm2 mcp-server dan mcp-ngrok. Balas dalam bahasa Indonesia, ringkas.';
+}
+async function copyTxt(t,btn){
+  try{await navigator.clipboard.writeText(t);}
+  catch{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();}
+  const o=btn.textContent;btn.textContent='✓ Tersalin';setTimeout(()=>{btn.textContent=o;},1500);
+}
+$('#copyprompt').onclick=e=>copyTxt(agentPrompt(),e.currentTarget);
+$('#copyhand').onclick=e=>copyTxt(handText,e.currentTarget);
+
+/* ===== DATA ===== */
+async function refresh(force){
+  if(!KEY){needKey();return;}
+  try{
+    S=await api('/state');
+    renderHeader();
+    const ms=JSON.stringify(S.mem);
+    if(force||ms!==lastMemStr){lastMemStr=ms;renderProj(force);renderMem();}
+    if(curTab==='map')layout();
+    if(curTab==='hand'&&force)loadHand();
+  }catch(e){console.warn(e.message);}
+}
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(curTab==='map')layout();},150);});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
+layout();requestAnimationFrame(frame);refresh(true);setInterval(refresh,8000);
+</script>
+</body></html>
